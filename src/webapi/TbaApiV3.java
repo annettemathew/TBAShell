@@ -23,6 +23,10 @@
 package webapi;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
+// import java.util.List;
+import java.util.List;
+import java.util.StringTokenizer;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -40,6 +44,7 @@ public class TbaApiV3 extends WebRequest
     private static final String TBA_AUTH_KEY = "UQmqq10GkWyNGmsSuN1WvKp0jpG0x4tSfaNc46E6ZGemWK6JL4sM8mPWZthOpHDN";
     private String header = null;
 
+    public static final String TEAM_NAME = "\"frc2367\""; // St Francis High Lancer Robotics
     /**
      * Constructor: Create an instance of the object.
      *
@@ -386,9 +391,56 @@ public class TbaApiV3 extends WebRequest
      * @param statusOut specifies standard output stream for command status, can be null for quiet mode.
      * @return event alliances data.
      */
-    public JsonStructure getEventAlliances(String eventKey, PrintStream statusOut)
-    {
-        return get("event/" + eventKey + "/alliances", statusOut, header);
+    public JsonStructure getEventAlliances(String eventKey, PrintStream statusOut, List<String> resultTeams)
+    {// list alliances?event=2019casj
+        JsonStructure ret = //return 
+        get("event/" + eventKey + "/alliances", statusOut, header);
+
+        // TODO: 1. pass in a List<String> to getEventAlliances()
+        // 2. In the inner loop below, if there is a match with any of the strings with
+        // your team-name, break and add *all* of the teams to this list and return it.
+        // 3. See whether the next API call can accept this filter. If not, retrieve *all* results
+        // like you did for 'alliances' and proceed to filter out the results like below.
+        JsonArray arr = (JsonArray)ret;
+        resultTeams.clear();
+        final int sz = arr.size();
+        for (int i = 0; i < sz; ++i) {
+            JsonArray picks = arr.getJsonObject(i).getJsonArray("picks");
+            final int szPicks = picks.size();
+            for (int j = 0; j < szPicks; ++j) {
+                //System.out.println(picks.getJsonString(j));
+                //if(picks.getJsonString(j).toString().equals("frc2367")){
+                String teamName = picks.getJsonString(j).toString();
+                //System.out.println(teamName);
+                if(teamName.equals(TEAM_NAME)) {
+                    System.out.println(arr.getJsonObject(i).toString());
+                    System.out.println(arr.getJsonObject(i).getJsonString("name"));
+                    //System.out.println(j);
+                    //System.out.println("Lancer Robotics");
+                    String results = picks.toString();
+
+                    // Exclude the wrapping [] characters
+                    results = results.substring(1, results.length() - 1);
+                    //System.out.println(results);
+                    StringTokenizer st = new StringTokenizer(results, "\",\"");
+                    while (st.hasMoreTokens()) {
+                        //System.out.println(st.nextToken());
+                        resultTeams.add(st.nextToken());
+                    }
+                    break;
+                    
+                    // found the right picks list
+                    // 1. add all contents of picks into resultsList DONE
+                    // 2. print only alliances 8 and other info for this alliance
+                    // 3. break DONE
+                }
+            }
+            //System.out.println(picks.toString());
+        }
+        //System.out.println(resultTeams);
+        //System.out.println(resultTeams.toString());
+        return ret; // TODO: no need to return all data
+        // return List<String> instead
     }   //getEventAlliances
 
     /**
@@ -411,14 +463,51 @@ public class TbaApiV3 extends WebRequest
      * @param statusOut specifies standard output stream for command status, can be null for quiet mode.
      * @return event OPR data.
      */
-    public JsonStructure getEventOprs(String eventKey, int verboseLevel, PrintStream statusOut)
-    {
+    public JsonStructure getEventOprs(String eventKey, int verboseLevel, PrintStream statusOut, List<String> resultTeams) {
         JsonStructure data = get("event/" + eventKey + "/oprs", statusOut, header);
-
+        //JsonStructure allianceData = get("event/" + eventKey + "/alliances", statusOut, header);
+        
+        
+        // 1. invoke alliances api call
+        // 2. parse results and update resultTeams 
+        // 3. invoke oprs api call
+        // 4. parse results and filter out everything based on result teams 
+        
         if (data != null && verboseLevel < 2)
         {
             data = (JsonStructure)((JsonObject)data).get("oprs");
+            //System.out.println("Output:");
+            //System.out.println(data);
+            //System.out.println("End output");
+            String result = data.toString();
+            result = result.substring(1, result.length() - 1); // strip out brackets 
+            StringTokenizer str = new StringTokenizer(result, ",");
+            List<String> oprsResults = new ArrayList<String>();
+            while (str.hasMoreTokens()) {
+                //System.out.println(str.nextToken());
+                String token = str.nextToken();
+                for(int i = 0; i < resultTeams.size(); ++i) {
+                    
+                    if(token.contains(resultTeams.get(i))) {
+                        Thread currentThread = Thread.currentThread();
+                        //System.out.println("FOUND!!! " + currentThread.getName() + " " + currentThread.getId());
+                        oprsResults.add(token);
+                    }
+                }
+                Thread currentThread = Thread.currentThread();
+                //System.out.println("outside for() " + currentThread.getName() + " " + currentThread.getId());
+            }
+            Thread currentThread = Thread.currentThread();
+            //System.out.println("outside while() " + currentThread.getName() + " " + currentThread.getId());
+        //JsonArray arr = (JsonArray)data;
+            //final int sz = arr.size();
+            //for(int i = 0; i < sz; i++) {
+                //System.out.println();
+            //}
+            System.out.println(oprsResults);
+            
         }
+        //System.out.println("Line number 503");
 
         return data;
     }   //getEventOpr
@@ -485,7 +574,9 @@ public class TbaApiV3 extends WebRequest
      */
     public JsonStructure getEventMatches(String eventKey, String verbosity, PrintStream statusOut)
     {
+        
         String request = "event/" + eventKey + "/matches";
+        System.out.println();
         if (verbosity != null) request += "/" + verbosity;
         return get(request, statusOut, header);
     }   //getEventMatches

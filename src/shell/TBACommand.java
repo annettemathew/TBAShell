@@ -24,11 +24,13 @@ package shell;
 
 import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import java.util.ArrayList;
 
 import webapi.TbaApiV3;
 
@@ -40,6 +42,7 @@ public class TBACommand
     /**
      * This class parses the filter part of the command and create a set of <key>=<value> pairs.
      */
+    private List<String> teamListResults = new ArrayList<String>(); 
     private class FilterSet
     {
         private HashMap<String, String> filters = new HashMap<>();
@@ -828,9 +831,13 @@ public class TBACommand
      * @param statusOut specifies standard output stream for command status, can be null for quiet mode.
      * @return resulting data of the command, null if command failed.
      */
+    // list alliances?event=2019casj
+    // list oprs?event=2019casj
     private JsonStructure processOprsRequest(
         int verboseLevel, FilterSet filterSet, PrintStream dataOut, PrintStream statusOut)
     {
+        System.out.println("processOprsRequest()");
+        System.out.println(this.teamListResults.toString());
         JsonStructure data = null;
         int numFilters = filterSet != null? filterSet.getNumFilters(): 0;
 
@@ -845,7 +852,9 @@ public class TBACommand
                     //
                     // Get oprs for the specified event.
                     //
-                    data = tbaApi.getEventOprs(value, verboseLevel, statusOut);
+                    System.out.println(value);
+                    tbaApi.getEventAlliances(value, statusOut, teamListResults);
+                    data = tbaApi.getEventOprs(value, verboseLevel, statusOut, teamListResults);
                 }
             }
 
@@ -1019,7 +1028,8 @@ public class TBACommand
     {
         JsonStructure data = null;
         int numFilters = filterSet != null? filterSet.getNumFilters(): 0;
-
+        //List<String> teamListResults = new ArrayList<String>(); // TODO: pass in uninitialized reference instead
+        // allocate ArrayList<String> in the callee function
         try
         {
             if (numFilters == 1)
@@ -1031,7 +1041,8 @@ public class TBACommand
                     //
                     // Get alliances for the specified event.
                     //
-                    data = tbaApi.getEventAlliances(value, statusOut);
+                    //List<String> teamListResults = new ArrayList<String>();
+                    data = tbaApi.getEventAlliances(value, statusOut, teamListResults);
                 }
             }
 
@@ -1041,7 +1052,9 @@ public class TBACommand
             }
             else if (dataOut != null)
             {
-                tbaApi.printData(data, dataOut);
+                //tbaApi.printData(data, dataOut);
+                //System.out.println("Not dumping data");
+                System.out.println(teamListResults);
             }
         }
         catch (RuntimeException e)
